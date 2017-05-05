@@ -490,7 +490,7 @@ based on the role named in the endpoint. The issuing CA certificate is returned
 as well, so that only the root CA need be in a client's trust store.
 
 **The private key is _not_ stored. If you do not save the private key, you will
-**need to request a new certificate.**
+need to request a new certificate.**
 
 | Method   | Path                         | Produces               |
 | :------- | :--------------------------- | :--------------------- |
@@ -613,12 +613,13 @@ $ curl \
 
 ## Create/Update Role
 
-This endpoint ceates or updates the role definition. Note that the
-`allowed_domains`, `allow_subdomains`, and `allow_any_name` attributes are
-additive; between them nearly and across multiple roles nearly any issuing
-policy can be accommodated. `server_flag`, `client_flag`, and
-`code_signing_flag` are additive as well. If a client requests a certificate
-that is not allowed by the CN policy in the role, the request is denied.
+This endpoint creates or updates the role definition. Note that the
+`allowed_domains`, `allow_subdomains`, `allow_glob_domains`, and
+`allow_any_name` attributes are additive; between them nearly and across
+multiple roles nearly any issuing policy can be accommodated. `server_flag`,
+`client_flag`, and `code_signing_flag` are additive as well. If a client
+requests a certificate that is not allowed by the CN policy in the role, the
+request is denied.
 
 | Method   | Path                         | Produces               |
 | :------- | :--------------------------- | :--------------------- |
@@ -658,6 +659,11 @@ that is not allowed by the CN policy in the role, the request is denied.
   `allowed_domains` value of `example.com` with this option set to true will
   allow `foo.example.com` and `bar.example.com` as well as `*.example.com`. This
   is redundant when using the `allow_any_name` option.
+
+- `allow_glob_domains` `(bool: false)` - Allows names specified in
+  `allowed_domains` to contain glob patterns (e.g. `ftp*.example.com`). Clients
+  will be allowed to request certificates with names matching the glob
+  patterns.
 
 - `allow_any_name` `(bool: false)` – Specifies if clients can request any CN.
   Useful in some circumstances, but make sure you understand whether it is
@@ -722,6 +728,13 @@ that is not allowed by the CN policy in the role, the request is denied.
   generated with long lifetimes, it is recommended that lease generation be
   disabled, as large amount of leases adversely affect the startup time of
   Vault.
+
+- `no_store` `(bool: false)` – If set, certificates issued/signed against this
+role will not be stored in the in the storage backend. This can improve
+performance when issuing large numbers of certificates. However, certificates
+issued in this way cannot be enumerated or revoked, so this option is
+recommended only for certificates that are non-sensitive, or extremely
+short-lived. This option implies a value of `false` for `generate_lease`.
 
 ### Sample Payload
 
@@ -1104,11 +1117,15 @@ refuse to issue an intermediate CA certificate (see the
 **This is a potentially dangerous endpoint and only highly trusted users should
 have access.**
 
-| Method   | Path                         | Produces               |
-| :------- | :--------------------------- | :--------------------- |
-| `POST`   | `/pki/sign-verbatim`         | `200 application/json` |
+| Method   | Path                                 | Produces               |
+| :------- | :----------------------------------- | :--------------------- |
+| `POST`   | `/pki/sign-verbatim(/:name)`         | `200 application/json` |
 
 ### Parameters
+
+- `name` `(string: "")` - Specifies a role. If set, the following parameters
+  from the role will have effect: `ttl`, `max_ttl`, `generate_lease`, and
+  `no_store`.
 
 - `csr` `(string: <required>)` – Specifies the PEM-encoded CSR.
 
